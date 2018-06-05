@@ -51,7 +51,7 @@
 #include "usbd_custom_hid_if.h"
 
 /* USER CODE BEGIN INCLUDE */
-
+#include "gal_prog.h"
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,7 +60,7 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+extern GALProg_t prog;
 /* USER CODE END PV */
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
@@ -189,6 +189,13 @@ __ALIGN_BEGIN static uint8_t CUSTOM_HID_ReportDesc_FS[USBD_CUSTOM_HID_REPORT_DES
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
 
+#define HID_REP_SET_IC  1
+#define HID_REP_PING	  2
+#define HID_REP_CH_VOLT 3
+#define HID_REP_WR_FUSE 4
+#define HID_REP_RD_FUSE 5
+#define HID_REP_CH_STATE 6
+
 /* USER CODE END PRIVATE_VARIABLES */
 
 /**
@@ -269,18 +276,39 @@ static int8_t CUSTOM_HID_OutEvent_FS(uint8_t event_idx, uint8_t state)
   /* USER CODE BEGIN 6 */
 	printf("Event %i State %i\n\r", event_idx, state);
 	uint8_t rep[20];
+	uint16_t offs;
+	uint8_t len;
 	
 	printf("\t buf: 0x%02x 0x%02x 0x%02x\n\r", ((uint8_t*)hUsbDeviceFS.pClassData)[0], ((uint8_t*)hUsbDeviceFS.pClassData)[1], ((uint8_t*)hUsbDeviceFS.pClassData)[2]);
 	switch (event_idx)
 	{
-		case 1:
+		case HID_REP_SET_IC:
 			break;
-		case 2:
+		case HID_REP_PING:
 			rep[0] = 2;
 			rep[1] = 0xa5;
 			rep[2] = ~((uint8_t*)hUsbDeviceFS.pClassData)[1];
 			USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, rep, 3);
-		case 3:
+		case HID_REP_WR_FUSE:
+			len = ((uint8_t*)hUsbDeviceFS.pClassData)[1];
+			offs = ((uint16_t*)hUsbDeviceFS.pClassData)[1];
+			memcpy(&prog.fuses_map[offs], &((uint8_t*)hUsbDeviceFS.pClassData)[4], len);
+			break;
+		case HID_REP_RD_FUSE:
+			len = ((uint8_t*)hUsbDeviceFS.pClassData)[1];
+			offs = ((uint16_t*)hUsbDeviceFS.pClassData)[1];
+			rep[0] = HID_REP_RD_FUSE;
+			rep[1] = len;
+			rep[2] = ((uint8_t*)hUsbDeviceFS.pClassData)[2];
+			rep[3] = ((uint8_t*)hUsbDeviceFS.pClassData)[3];
+			memcpy(&rep[4], &prog.fuses_map[offs], len);
+			USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, rep, len + 4);
+			break;
+		case HID_REP_CH_STATE:
+			prog.state = ((uint8_t*)hUsbDeviceFS.pClassData)[1];
+			rep[0] = HID_REP_CH_STATE;
+			rep[1] = prog.state;
+			USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, rep, 2);
 			break;
 	}
   return (USBD_OK);
@@ -295,10 +323,10 @@ static int8_t CUSTOM_HID_OutEvent_FS(uint8_t event_idx, uint8_t state)
   * @retval USBD_OK if all operations are OK else USBD_FAIL
   */
 
-static int8_t USBD_CUSTOM_HID_SendReport_FS(uint8_t *report, uint16_t len)
+/*static int8_t USBD_CUSTOM_HID_SendReport_FS(uint8_t *report, uint16_t len)
 {
-  return USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, report, len);
-}
+  return (int8_t)USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, report, len);
+}*/
 
 /* USER CODE END 7 */
 

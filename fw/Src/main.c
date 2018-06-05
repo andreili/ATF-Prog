@@ -53,7 +53,7 @@
 #include "usb_device.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "gal_prog.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -66,7 +66,7 @@ osThreadId LEDHandle;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+GALProg_t prog;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -397,10 +397,12 @@ void StartProg(void const * argument)
   MX_USB_DEVICE_Init();
 
   /* USER CODE BEGIN 5 */
-  /* Infinite loop */
+	prog_init(&prog);
+	
   for(;;)
   {
-    osDelay(1);
+		if (prog_proc(&prog))
+			osDelay(1);
   }
   /* USER CODE END 5 */ 
 }
